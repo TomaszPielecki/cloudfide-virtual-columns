@@ -77,3 +77,29 @@ def test_total_revenue_consistency():
         df["revenue"].sum(),
         abs=0.01
     )
+
+def test_invalid_order_date():
+    """Pipeline must reject invalid order dates."""
+
+    df = load_sales()
+
+    df.loc[0, "order_date"] = "not-a-date"
+
+    with pytest.raises(
+        ValueError,
+        match="Invalid or missing order dates"
+    ):
+        clean_sales(df)
+
+def test_impossible_order_date():
+    """Pipeline must reject impossible dates."""
+
+    df = load_sales()
+
+    df.loc[0, "order_date"] = "2026-02-30"
+
+    with pytest.raises(
+        ValueError,
+        match="Invalid or missing order dates"
+    ):
+        clean_sales(df)    

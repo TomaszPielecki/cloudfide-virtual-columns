@@ -1,6 +1,8 @@
+
 from pathlib import Path
 
 import pandas as pd
+
 from solution import add_virtual_column
 
 
@@ -76,7 +78,7 @@ def clean_sales(df: pd.DataFrame) -> pd.DataFrame:
 
     df["discount"] = df["discount"].fillna(0)
 
-    # 4. Recover missing unit prices using product prices
+    # 4. Recover missing unit prices by product
     missing_prices = df["unit_price"].isna().sum()
 
     product_prices = (
@@ -88,7 +90,21 @@ def clean_sales(df: pd.DataFrame) -> pd.DataFrame:
         df["product"].map(product_prices)
     )
 
-    # 5. Validate required fields
+    # 5. Validate and convert order dates
+    df["order_date"] = pd.to_datetime(
+        df["order_date"].str.strip(),
+        format="%Y-%m-%d",
+        errors="coerce"
+    )
+
+    invalid_dates = df["order_date"].isna().sum()
+
+    if invalid_dates > 0:
+        raise ValueError(
+            f"Invalid or missing order dates: {invalid_dates}"
+        )
+
+    # 6. Validate required fields
     required_columns = [
         "order_id",
         "region",
@@ -103,21 +119,23 @@ def clean_sales(df: pd.DataFrame) -> pd.DataFrame:
             "Missing required sales data after cleaning"
         )
 
-    # 6. Display cleaning summary
+    # 7. Display cleaning summary
     print(f"Missing discounts filled: {missing_discounts}")
     print(f"Missing prices recovered: {missing_prices}")
     print(
         "Remaining missing prices:",
         df["unit_price"].isna().sum()
     )
+    print(f"Invalid order dates: {invalid_dates}")
     print(f"Cleaned rows: {len(df)}")
 
     return df
 
+
 def calculate_revenue(df: pd.DataFrame) -> pd.DataFrame:
     """Calculate revenue using virtual columns."""
 
-    # Calculate gross revenue
+    # 1. Calculate gross revenue
     df = add_virtual_column(
         df,
         "quantity * unit_price",
@@ -125,9 +143,11 @@ def calculate_revenue(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     if df.empty:
-        raise ValueError("Failed to calculate gross revenue")
+        raise ValueError(
+            "Failed to calculate gross revenue"
+        )
 
-    # Subtract discounts
+    # 2. Subtract discounts
     df = add_virtual_column(
         df,
         "gross_revenue - discount",
@@ -135,16 +155,22 @@ def calculate_revenue(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     if df.empty:
-        raise ValueError("Failed to calculate net revenue")
+        raise ValueError(
+            "Failed to calculate net revenue"
+        )
 
     print("\n=== REVENUE CALCULATION ===")
-    print(df[[
-        "quantity",
-        "unit_price",
-        "discount",
-        "gross_revenue",
-        "revenue"
-    ]].head(10).to_string(index=False))
+    print(
+        df[
+            [
+                "quantity",
+                "unit_price",
+                "discount",
+                "gross_revenue",
+                "revenue"
+            ]
+        ].head(10).to_string(index=False)
+    )
 
     return df
 
@@ -165,8 +191,6 @@ def aggregate_revenue(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-
-
 def main():
     """Run the complete sales ETL pipeline."""
 
@@ -181,10 +205,10 @@ def main():
     # Calculate revenue
     sales = calculate_revenue(sales)
 
-    # Aggregate
+    # Aggregate revenue
     revenue_by_region = aggregate_revenue(sales)
 
-    # Load / Export
+    # Export CSV
     revenue_by_region.to_csv(
         OUTPUT_FILE,
         index=False
