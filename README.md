@@ -108,6 +108,14 @@ produce an empty DataFrame.
 
 ## Optional report
 
+Pre-generated versions of the report are available in the repository:
+
+- [Download the HTML report](reports/sales_analysis.html)
+- [Download the PDF report](reports/sales_analysis.pdf)
+
+On GitHub, open the selected link and use **Download raw file** to save the
+report on your computer. The PDF can also be previewed directly in the browser.
+
 The analytical report can be generated with Quarto:
 
 ```powershell
