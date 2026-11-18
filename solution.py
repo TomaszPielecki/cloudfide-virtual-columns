@@ -2,8 +2,9 @@
 import operator
 import re
 
+import numpy as np
 import pandas as pd
-from pandas.api.types import is_numeric_dtype
+from pandas.api.types import is_bool_dtype, is_numeric_dtype
 
 
 def add_virtual_column(
@@ -51,12 +52,26 @@ def add_virtual_column(
     if left_column not in df.columns or right_column not in df.columns:
         return pd.DataFrame()
 
-    # 5. Validate numeric data types
-    if not is_numeric_dtype(df[left_column]):
-        return pd.DataFrame()
+    # 5. Validate numeric operands
+    for column in [left_column, right_column]:
+        series = df[column]
 
-    if not is_numeric_dtype(df[right_column]):
-        return pd.DataFrame()
+        if is_bool_dtype(series.dtype):
+            return pd.DataFrame()
+
+        if not is_numeric_dtype(series.dtype):
+            return pd.DataFrame()
+
+        try:
+            values = series.to_numpy(
+                dtype="float64",
+                na_value=np.nan
+            )
+        except (TypeError, ValueError, OverflowError):
+            return pd.DataFrame()
+
+        if not np.isfinite(values).all():
+            return pd.DataFrame()
 
     # 6. Define supported operations
     operations = {
@@ -69,10 +84,20 @@ def add_virtual_column(
     result = df.copy()
 
     try:
-        result[new_column] = operations[operation](
+        calculated = operations[operation](
             df[left_column],
             df[right_column]
         )
+
+        values = calculated.to_numpy(
+            dtype="float64",
+            na_value=np.nan
+        )
+
+        if not np.isfinite(values).all():
+            return pd.DataFrame()
+
+        result[new_column] = calculated
     except (TypeError, ValueError, ArithmeticError):
         return pd.DataFrame()
 

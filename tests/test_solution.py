@@ -1,4 +1,5 @@
 
+import numpy as np
 import pandas as pd
 
 from solution import add_virtual_column
@@ -100,3 +101,63 @@ def test_underscore_column_names():
     )
 
     assert result["total_revenue"].tolist() == [20, 60]
+
+
+def test_boolean_values_rejected():
+    df = pd.DataFrame({
+        "first": [True, False],
+        "second": [False, True],
+    })
+
+    result = add_virtual_column(
+        df,
+        "first + second",
+        "total"
+    )
+
+    assert result.empty
+
+
+def test_infinite_values_rejected():
+    df = pd.DataFrame({
+        "first": [1.0, np.inf],
+        "second": [2.0, 3.0],
+    })
+
+    result = add_virtual_column(
+        df,
+        "first + second",
+        "total"
+    )
+
+    assert result.empty
+
+
+def test_nan_values_rejected():
+    df = pd.DataFrame({
+        "first": [1.0, np.nan],
+        "second": [2.0, 3.0],
+    })
+
+    result = add_virtual_column(
+        df,
+        "first * second",
+        "total"
+    )
+
+    assert result.empty
+
+
+def test_infinite_result_rejected():
+    df = pd.DataFrame({
+        "first": [1e308],
+        "second": [1e308],
+    })
+
+    result = add_virtual_column(
+        df,
+        "first * second",
+        "total"
+    )
+
+    assert result.empty
